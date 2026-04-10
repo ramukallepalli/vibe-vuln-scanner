@@ -1,0 +1,26 @@
+{
+  "name": "vibe-vuln-scanner",
+  "version": "1.2.0",
+  "description": "Chrome extension to scan web applications for security vulnerabilities",
+  "scripts": {
+    "lint": "eslint src/**/*.js",
+    "test": "jest",
+    "package": "web-ext build --source-dir . --artifacts-dir dist --overwrite-dest"
+  },
+  "keywords": [
+    "chrome-extension",
+    "security",
+    "vulnerability-scanner"
+  ],
+  "author": "Ramu Kallepalli <ramu.kallepalli@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ramukallepalli/vibe-vuln-scanner.git"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "web-ext": "^7.11.0"
+  }
+}

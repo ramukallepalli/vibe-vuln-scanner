@@ -1,0 +1,5 @@
+# Git mailmap for Vibe Vulnerability Scanner
+# Maps different email addresses to canonical contributor identities
+# Format: Canonical Name <canonical@email> <other@email>
+
+Ramu Kallepalli <ramu.kallepalli@gmail.com> <rakallepalli@ebay.com>

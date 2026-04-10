@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.zip
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.crx
+*.pem
+web-ext-artifacts/

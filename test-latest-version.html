@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Latest Version Check Test</title>
+
+  <!-- Test Case 1: Outdated but SAFE jQuery version -->
+  <!-- jQuery 3.6.0 is safe (>= 3.5.0) but not the latest -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- Test Case 2: Latest jQuery (as of implementation)
+  Uncomment to test:
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  -->
+</head>
+<body>
+  <h1>Latest Version Check Test</h1>
+
+  <div class="test-info">
+    <h2>Test Cases</h2>
+
+    <h3>Case 1: Outdated but Safe Version (jQuery 3.6.0)</h3>
+    <ul>
+      <li><strong>Expected Result</strong>: LOW severity informational finding</li>
+      <li><strong>Type</strong>: KEV_PRODUCT_SAFE_VERSION</li>
+      <li><strong>Description</strong>: Should mention version is outside vulnerable range</li>
+      <li><strong>Evidence</strong>:
+        <ul>
+          <li>detectedVersion: 3.6.0</li>
+          <li>latestVersion: 3.7.1 (or current latest)</li>
+        </ul>
+      </li>
+      <li><strong>Remediation</strong>: "Version 3.6.0 is safe but outdated. Latest stable version is 3.7.1. Consider updating."</li>
+    </ul>
+
+    <h3>Case 2: Latest Version (jQuery 3.7.1) - Currently Commented Out</h3>
+    <ul>
+      <li><strong>Expected Result</strong>: LOW severity informational finding</li>
+      <li><strong>Evidence</strong>:
+        <ul>
+          <li>detectedVersion: 3.7.1</li>
+          <li>latestVersion: 3.7.1</li>
+        </ul>
+      </li>
+      <li><strong>Remediation</strong>: "Version 3.7.1 is safe and up-to-date (latest stable release)."</li>
+    </ul>
+
+    <h3>How to Test</h3>
+    <ol>
+      <li>Load this page with the extension enabled</li>
+      <li>Open extension popup</li>
+      <li>Wait for scan (may take 3-5 seconds for npm registry + NVD calls)</li>
+      <li>Find the jQuery KEV_PRODUCT_SAFE_VERSION finding</li>
+      <li>Verify:
+        <ul>
+          <li>Evidence shows both detectedVersion and latestVersion</li>
+          <li>Remediation tells you if version is outdated or up-to-date</li>
+          <li>No more generic "verify you're using the latest" message</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>Service Worker Console Checks</h3>
+    <p>Open: chrome://extensions/ → "Inspect views: service worker"</p>
+    <ul>
+      <li>Should see: "Fetched latest version for jQuery: 3.7.1" (or current latest)</li>
+      <li>Run: <code>chrome.storage.local.get(null, console.log)</code></li>
+      <li>Verify key exists: <code>latest_jquery</code> with version and timestamp</li>
+      <li>Second scan should use cache (no new fetch message)</li>
+    </ul>
+
+    <h3>Expected Behavior Summary</h3>
+    <table>
+      <tr>
+        <th>Detected Version</th>
+        <th>Latest Version</th>
+        <th>Remediation Message</th>
+      </tr>
+      <tr>
+        <td>3.6.0</td>
+        <td>3.7.1</td>
+        <td>Safe but outdated. Consider updating to 3.7.1.</td>
+      </tr>
+      <tr>
+        <td>3.7.1</td>
+        <td>3.7.1</td>
+        <td>Safe and up-to-date (latest stable).</td>
+      </tr>
+      <tr>
+        <td>3.8.0-beta</td>
+        <td>3.7.1</td>
+        <td>Safe. Latest stable is 3.7.1.</td>
+      </tr>
+    </table>
+  </div>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      color: #388e3c;
+      border-bottom: 3px solid #388e3c;
+      padding-bottom: 10px;
+    }
+
+    h2 {
+      color: #1976d2;
+      margin-top: 30px;
+    }
+
+    h3 {
+      color: #f57c00;
+      margin-top: 20px;
+    }
+
+    .test-info {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    ul {
+      line-height: 1.6;
+    }
+
+    code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 10px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border: 1px solid #ddd;
+    }
+
+    th {
+      background: #1976d2;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background: #f5f5f5;
+    }
+
+    strong {
+      color: #388e3c;
+    }
+  </style>
+</body>
+</html>
