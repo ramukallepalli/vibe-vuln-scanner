@@ -13,7 +13,7 @@
     "vulnerability-scanner"
   ],
   "author": "Ramu Kallepalli <ramu.kallepalli@gmail.com>",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/ramukallepalli/vibe-vuln-scanner.git"
