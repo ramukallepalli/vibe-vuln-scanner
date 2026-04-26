@@ -359,3 +359,11 @@ h1 {
 .history-severity.medium {
   color: #fbc02d;
 }
+
+
+/* Auto-added: mobile responsiveness */
+@media (max-width: 640px) {
+  .container {
+    text-align: center;
+  }
+}
