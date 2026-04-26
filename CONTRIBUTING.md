@@ -135,11 +135,7 @@ When reporting bugs or security issues:
 
 ### Security Issues
 
-**Do not** open public issues for security vulnerabilities. Instead:
-- Email security concerns to: ramu.kallepalli@gmail.com
-- Include "SECURITY" in the subject line
-- Provide detailed reproduction steps
-- Allow time for a fix before public disclosure
+**Do not** open public issues for security vulnerabilities. Please see our [Security Policy](SECURITY.md) for instructions on how to responsibly report security issues.
 
 ## Documentation
 
@@ -150,21 +146,7 @@ When reporting bugs or security issues:
 
 ## Code of Conduct
 
-### Our Standards
-
-- Be respectful and inclusive
-- Welcome newcomers
-- Accept constructive criticism gracefully
-- Focus on what's best for the community
-- Show empathy towards others
-
-### Unacceptable Behavior
-
-- Harassment or discriminatory language
-- Trolling or inflammatory comments
-- Personal or political attacks
-- Publishing others' private information
-- Other conduct inappropriate in a professional setting
+This project adheres to the Contributor Covenant [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to rakallepalli@ebay.com.
 
 ## Questions?
 
@@ -174,7 +156,7 @@ If you have questions about contributing:
 
 ## License
 
-By contributing to Vibe Vulnerability Scanner, you agree that your contributions will be licensed under the MIT License.
+By contributing to Vibe Vulnerability Scanner, you agree that your contributions will be licensed under the Apache License 2.0.
 
 ---
 

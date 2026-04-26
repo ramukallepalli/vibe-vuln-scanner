@@ -1,17 +1,82 @@
 # Vibe Vulnerability Scanner
 
-A Chrome extension that scans web applications for security vulnerabilities with conservative, evidence-based detection.
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.2.0-green.svg)](CHANGELOG.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
-## Important: Understanding the Scanning Model
+**Catch exploitable vulnerabilities before attackers do.** Real-time security scanning powered by CISA's Known Exploited Vulnerabilities catalog with automatic NVD verification.
+
+<!-- ![Demo GIF](screenshots/demo.gif) -->
+
+## ✨ Key Features
+
+- 🔍 **Real-time Scanning** - Automatic vulnerability detection on page load
+- 🛡️ **CISA KEV Integration** - Checks against official Known Exploited Vulnerabilities catalog
+- ✅ **NVD Verification** - Confirms vulnerable versions using NIST CVE data
+- 📊 **Persistent History** - Stores last 50 scans per domain (v1.2.0)
+- 📤 **Export Results** - Download findings as JSON or CSV (v1.2.0)
+- 🔐 **HTTP Header Analysis** - Inspects security headers (v1.2.0)
+- 🎯 **Confidence Scoring** - Distinguishes confirmed findings from heuristics
+- 🔒 **Privacy First** - All scanning happens locally, no data collection
+- ⚡ **Manifest V3** - Modern Chrome extension architecture
+
+## Quick Start
+
+1. Clone this repository
+2. Open `chrome://extensions/` in Chrome
+3. Enable "Developer mode" (top right)
+4. Click "Load unpacked" and select the project directory
+5. Navigate to any website and click the extension icon!
+
+Try it on the included `test-page.html` to see detection in action.
+
+## Installation
+
+### For Users
+
+**Chrome Web Store** (Coming Soon)
+
+### For Developers
+
+```bash
+# Clone the repository
+git clone https://github.com/ramukallepalli/vibe-vuln-scanner.git
+cd vibe-vuln-scanner
+
+# Install dependencies
+npm install
+
+# Load extension in Chrome
+# 1. Navigate to chrome://extensions/
+# 2. Enable "Developer mode"
+# 3. Click "Load unpacked"
+# 4. Select the vibe-vuln-scanner directory
+
+# Run in development mode with auto-reload
+npm run dev
+```
+
+### Build for Production
+
+```bash
+npm run package
+```
+
+Creates a `.zip` file in `web-ext-artifacts/` ready for Chrome Web Store submission.
+
+## How It Works
+
+### Understanding the Scanning Model
 
 This extension provides **heuristic security analysis**, not definitive vulnerability confirmation. Results are categorized by:
 
-### Confidence Levels
+#### Confidence Levels
 - **High**: Strong evidence of the issue (e.g., confirmed HTTP script loading)
 - **Medium**: Likely issue but requires verification (e.g., potential secret patterns)
 - **Low**: Weak signal requiring manual investigation (e.g., product name matches KEV database)
 
-### Finding Categories
+#### Finding Categories
 - **Confirmed**: Objective fact (e.g., missing HTTPS)
 - **Probable**: Likely issue based on strong evidence
 - **Heuristic**: Pattern-based detection requiring context
@@ -19,7 +84,7 @@ This extension provides **heuristic security analysis**, not definitive vulnerab
 
 ### CISA KEV Correlation with Automatic Version Verification
 
-The extension automatically verifies if detected library versions are vulnerable by consulting the NIST National Vulnerability Database (NVD) API:
+The extension automatically verifies if detected library versions are vulnerable:
 
 1. **Detects libraries** from script URLs and meta tags (jQuery, React, Vue, Angular, etc.)
 2. **Matches products** against CISA KEV catalog
@@ -31,74 +96,20 @@ The extension automatically verifies if detected library versions are vulnerable
 - **LOW (informational)**: Product matches KEV but version appears safe → Automatically checks if you're on latest stable release
 - **MEDIUM (informational)**: Product matches KEV but NVD data unavailable → Manual verification recommended
 
-**Fully automated verification** - the scanner:
-1. Verifies if your version is vulnerable (via NVD API)
-2. Checks if safe versions are up-to-date (via npm registry)
-3. Provides specific remediation (e.g., "Update from 3.6.0 to 3.7.1" or "You're on the latest version")
-
-## Features
-
-- **Conservative Vulnerability Detection**: Heuristic-based scanning with explicit confidence levels
-- **CISA KEV Awareness**: Correlates detected libraries with KEV catalog (requires manual verification)
-- **Safe Popup Rendering**: No innerHTML usage, protection against extension-based XSS
-- **Efficient Resource Management**: Results keyed by tab + URL, automatic cleanup on navigation/tab close
-- **MV3 Compliant**: Uses chrome.alarms for periodic refresh, not setInterval
-- **Minimal Permissions**: No host_permissions required, runs via content scripts only
-
-## Installation
-
-### Development Mode
-
-1. Clone or download this repository
-2. Install dependencies (optional, for linting/packaging):
-   ```bash
-   npm install
-   ```
-3. Load the extension in Chrome:
-   - Open `chrome://extensions/`
-   - Enable "Developer mode"
-   - Click "Load unpacked"
-   - Select the `vibe-vuln-scanner` directory
-
-### Production Build
-
-```bash
-npm run package
-```
-
-Creates a `.zip` file in `dist/` for Chrome Web Store submission.
-
-## Usage
-
-1. Navigate to a web page
-2. Click the extension icon
-3. Review findings (note severity, confidence, and category)
-4. Click "Rescan Page" to run a fresh scan
-
 ## What Gets Scanned
 
-### Heuristic Patterns (Not Confirmed Vulnerabilities)
-
-- **Inline Event Handlers**: `onclick`, `onerror`, etc. detected → `MEDIUM` severity, `medium` confidence
-- **innerHTML Usage**: Detected in scripts → `LOW` severity, `low` confidence, informational
-- **Missing SRI**: CDN scripts without integrity attribute → `LOW` severity, informational
-
 ### Confirmed Issues
+- ✅ **HTTP Scripts**: Loading scripts over insecure HTTP → `HIGH` severity
+- ✅ **Weak CSP**: `unsafe-inline` or `unsafe-eval` in CSP → `MEDIUM` severity
+- ✅ **Vulnerable Libraries**: Confirmed KEV match with NVD verification → `CRITICAL` severity
 
-- **HTTP Scripts**: Loading scripts over insecure HTTP → `HIGH` severity, `high` confidence
-- **Weak CSP**: `unsafe-inline` or `unsafe-eval` in CSP → `MEDIUM` severity, `high` confidence
+### Heuristic Patterns (Require Verification)
+- 🔍 **Inline Event Handlers**: `onclick`, `onerror`, etc. → `MEDIUM` severity
+- 🔍 **Secret Exposure**: Pattern matching for API keys → `HIGH` severity
+- 🔍 **innerHTML Usage**: Potential XSS risk → `LOW` severity, informational
+- 🔍 **Missing SRI**: CDN scripts without integrity → `LOW` severity, informational
 
-### Known Exploited Vulnerabilities (KEV)
-
-- **Confirmed Vulnerable Version**: Library version matches KEV and NVD confirms it's in vulnerable range → `CRITICAL` severity, `high` confidence
-- **Safe Version Detected**: Library matches KEV but version is outside vulnerable range → `LOW` severity, informational
-- **KEV Match (Unverified)**: Library matches KEV but NVD data unavailable → `MEDIUM` severity, `low` confidence
-
-### Potential Issues (Require Verification)
-
-- **Secret Exposure**: Pattern matching for API keys → `HIGH` severity, `medium` confidence
-
-## Finding Structure
+### Finding Structure
 
 Each finding includes:
 
@@ -118,67 +129,86 @@ Each finding includes:
 }
 ```
 
-## Limitations
+<!-- ## Screenshots
 
-1. **No Version-Range Matching**: Cannot definitively say if a detected library version is vulnerable
-2. **Heuristic XSS Detection**: Presence of `onclick` doesn't prove XSS exploitability
-3. **Secret Pattern Matching**: Regex-based, prone to false positives
-4. **Client-Side Only**: Cannot inspect server-side code or HTTP headers (except CSP meta tag)
-5. **No DOM XSS Analysis**: Does not trace data flow to detect DOM-based XSS
+![Popup Overview](screenshots/popup-overview.png)
+*Main scan results interface showing severity breakdown*
 
-## Project Structure
+![Vulnerability Details](screenshots/vulnerability-details.png)
+*Detailed finding with remediation guidance*
+
+![Export Feature](screenshots/export-feature.png)
+*Export scan results as JSON or CSV (v1.2.0)*
+
+![Scan History](screenshots/scan-history.png)
+*View historical scans for each domain (v1.2.0)* -->
+
+## Architecture
 
 ```
 vibe-vuln-scanner/
 ├── manifest.json              # Extension manifest (MV3)
 ├── src/
 │   ├── content/
-│   │   └── scanner.js        # Vulnerability scanner logic
+│   │   └── scanner.js        # Vulnerability scanner logic (1,150 lines)
 │   ├── background/
-│   │   └── service-worker.js # KEV management, result storage
+│   │   └── service-worker.js # KEV management, NVD integration (644 lines)
 │   └── popup/
 │       ├── popup.html        # Popup UI
 │       ├── popup.css         # Styles
-│       └── popup.js          # Safe DOM rendering
+│       └── popup.js          # Safe DOM rendering, export, history (481 lines)
+├── __tests__/                 # Jest test suite
 ├── CHANGELOG.md              # Version history
-└── package.json              # NPM config
+└── package.json              # NPM configuration
 ```
-
-## Available Scripts
-
-- `npm run lint` - ESLint check
-- `npm test` - Run Jest tests
-- `npm run package` - Create distribution package
-
-## CISA KEV Integration
-
-- **Source**: https://www.cisa.gov/known-exploited-vulnerabilities-catalog
-- **Update Frequency**: Every 6 hours via chrome.alarms
-- **Storage**: chrome.storage.local (survives extension restarts)
-- **Matching Strategy**: Product name correlation only (no version validation)
-
-## Security & Privacy
-
-- **No External Data Transmission**: All scanning is client-side except KEV catalog fetch (public CISA endpoint)
-- **No User Tracking**: No analytics, no telemetry
-- **Minimal Permissions**: activeTab, storage, alarms, tabs
-- **Safe Rendering**: All popup content rendered via DOM APIs, not innerHTML
-
-## Permissions Explained
-
-- `activeTab`: Access current tab's DOM for scanning
-- `storage`: Cache CISA KEV catalog locally
-- `alarms`: Schedule periodic KEV refresh (MV3 requirement)
-- `tabs`: Detect tab close/navigation for result cleanup
-
-## Development Notes
 
 ### Message Flow
 
 1. **Auto-scan**: Content script runs on page load → sends results to background → background stores and updates badge
-2. **Manual scan**: Popup requests scan → content script scans → background stores → popup polls for results
+2. **Manual scan**: Popup requests scan → content script scans → background stores → popup displays results
 
-### Adding New Scans
+## Available Scripts
+
+```bash
+npm run lint            # Run ESLint
+npm run lint:fix        # Auto-fix linting issues
+npm test                # Run Jest test suite
+npm run test:watch      # Run tests in watch mode
+npm run test:coverage   # Generate coverage report
+npm run dev             # Run extension with auto-reload
+npm run package         # Build production .zip
+```
+
+## Security & Privacy
+
+- ✅ **No External Data Transmission**: All scanning is client-side (except public CISA KEV catalog fetch)
+- ✅ **No User Tracking**: No analytics, no telemetry
+- ✅ **Minimal Permissions**: Only activeTab, storage, alarms, tabs
+- ✅ **Safe Rendering**: All popup content rendered via DOM APIs, not innerHTML
+- ✅ **HTTPS Only**: KEV catalog and NVD API calls use HTTPS
+
+### Permissions Explained
+
+- `activeTab`: Access current tab's DOM for scanning
+- `storage`: Cache CISA KEV catalog and scan history locally
+- `alarms`: Schedule periodic KEV refresh (MV3 requirement)
+- `tabs`: Detect tab close/navigation for result cleanup
+
+## Limitations
+
+1. **Heuristic XSS Detection**: Presence of `onclick` doesn't prove XSS exploitability
+2. **Secret Pattern Matching**: Regex-based, prone to false positives
+3. **Client-Side Only**: Cannot inspect server-side code or HTTP response headers
+4. **No DOM XSS Analysis**: Does not trace data flow to detect DOM-based XSS
+5. **Version Detection**: Relies on version numbers in script URLs/meta tags
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Good first issues**: [View beginner-friendly tasks](https://github.com/ramukallepalli/vibe-vuln-scanner/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+
+### Adding New Vulnerability Checks
 
 ```javascript
 scanNewPattern() {
@@ -203,17 +233,19 @@ Call from `runScans()` and findings will be auto-deduplicated.
 
 ## Testing
 
-### Manual Test Checklist
+### Automated Tests
 
-1. **Popup Rendering**: Verify no script errors, all findings render correctly
-2. **Scan Lifecycle**: Trigger manual scan, verify results appear
-3. **Tab Cleanup**: Close tab, verify results cleared from background
-4. **Navigation Cleanup**: Navigate to new URL, verify old results cleared
-5. **KEV Refresh**: Check console for alarm-based refresh (not setInterval)
-6. **Safe Rendering**: Inspect popup DOM, verify no innerHTML usage
-7. **Deduplication**: Run scan twice, verify findings not duplicated
+```bash
+npm test
+```
 
-### Test Page
+Test suite includes:
+- Version parsing and comparison logic
+- Finding deduplication
+- Secret pattern detection
+- Chrome API mocking
+
+### Manual Testing
 
 The included `test-page.html` contains intentional issues:
 - Inline event handlers
@@ -222,24 +254,36 @@ The included `test-page.html` contains intentional issues:
 - Weak CSP
 - Potential secret exposure patterns
 
-## Contributing
+## CISA KEV Integration
 
-Contributions welcome. When adding detection logic:
-
-1. Use conservative severity assignments
-2. Add explicit confidence levels
-3. Provide remediation guidance
-4. Use `createFinding()` for structured data
-5. Mark heuristics as `category: 'heuristic'`
-
-## License
-
-MIT
+- **Source**: https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+- **Update Frequency**: Every 6 hours via chrome.alarms
+- **Storage**: chrome.storage.local (survives extension restarts)
+- **NVD Integration**: Fetches CVE details from https://services.nvd.nist.gov/rest/json/cves/2.0
+- **Caching**: KEV (24h), CVE details (permanent), npm version info (1h)
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
+## License
+
+Apache License 2.0 - see [LICENSE](LICENSE) file for details.
+
+Copyright 2024 eBay Inc.
+
+## Acknowledgments
+
+- Contributors: See [AUTHORS.md](AUTHORS.md)
+- Built at eBay and open-sourced for the community
+- Powered by [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) and [NIST NVD](https://nvd.nist.gov/)
 
 ## Support
 
-For issues or questions, open a GitHub issue.
+- **Issues**: [GitHub Issues](https://github.com/ramukallepalli/vibe-vuln-scanner/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ramukallepalli/vibe-vuln-scanner/discussions)
+- **Security**: See [SECURITY.md](SECURITY.md) for vulnerability reporting
+
+---
+
+**Made with ❤️ by the security community**
