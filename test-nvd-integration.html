@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NVD Integration Test Page</title>
+
+  <!-- Test Case 1: Known vulnerable jQuery version (CVE-2020-11022, CVE-2020-11023) -->
+  <!-- jQuery < 3.5.0 is vulnerable -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+  <!-- Test Case 2: Safe jQuery version (should show as safe) -->
+  <!-- Uncomment to test:
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  -->
+</head>
+<body>
+  <h1>NVD Integration Test Page</h1>
+
+  <div class="test-info">
+    <h2>Test Cases</h2>
+
+    <h3>Case 1: Vulnerable jQuery Version (3.4.1)</h3>
+    <ul>
+      <li><strong>Expected Result</strong>: CRITICAL severity finding</li>
+      <li><strong>Confidence</strong>: high</li>
+      <li><strong>Category</strong>: confirmed</li>
+      <li><strong>Description</strong>: Should mention jQuery 3.4.1 is affected by CVE-2020-11022 or CVE-2020-11023</li>
+      <li><strong>Evidence</strong>: Should include version range showing 3.4.1 falls within vulnerable range</li>
+      <li><strong>Remediation</strong>: Should recommend updating to jQuery >= 3.5.0</li>
+    </ul>
+
+    <h3>Case 2: Safe jQuery Version (3.7.1) - Currently Commented Out</h3>
+    <ul>
+      <li><strong>Expected Result</strong>: LOW severity informational finding</li>
+      <li><strong>Confidence</strong>: medium</li>
+      <li><strong>Category</strong>: informational</li>
+      <li><strong>Description</strong>: Should mention jQuery 3.7.1 is outside vulnerable range</li>
+      <li><strong>Remediation</strong>: Verify you're using latest stable release</li>
+    </ul>
+
+    <h3>How to Test</h3>
+    <ol>
+      <li>Load this page with the Vibe Vulnerability Scanner extension enabled</li>
+      <li>Open the extension popup</li>
+      <li>Wait for scan to complete (may take a few seconds for NVD API calls)</li>
+      <li>Verify the jQuery finding matches expected results above</li>
+      <li>Check browser console (F12) and service worker console for any errors</li>
+    </ol>
+
+    <h3>Debugging Tips</h3>
+    <ul>
+      <li><strong>Service Worker Console</strong>: chrome://extensions/ → "Inspect views: service worker"
+        <ul>
+          <li>Should see: "Fetched CVE details for CVE-XXXX-XXXXX"</li>
+          <li>Check for NVD API errors (rate limiting, network issues)</li>
+        </ul>
+      </li>
+      <li><strong>Content Script Console</strong>: F12 on this page
+        <ul>
+          <li>Look for KEV correlation activity</li>
+          <li>Check if library was detected correctly</li>
+        </ul>
+      </li>
+      <li><strong>Storage Check</strong>: In service worker console, run:
+        <ul>
+          <li><code>chrome.storage.local.get(null, console.log)</code></li>
+          <li>Verify KEV catalog is loaded</li>
+          <li>Check if CVE details are cached (keys like "cve_CVE-2020-11022")</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Known jQuery KEV CVEs</h3>
+    <ul>
+      <li><strong>CVE-2020-11022</strong>: jQuery XSS vulnerability (< 3.5.0)</li>
+      <li><strong>CVE-2020-11023</strong>: jQuery XSS vulnerability (< 3.5.0)</li>
+    </ul>
+  </div>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      color: #d32f2f;
+      border-bottom: 3px solid #d32f2f;
+      padding-bottom: 10px;
+    }
+
+    h2 {
+      color: #1976d2;
+      margin-top: 30px;
+    }
+
+    h3 {
+      color: #388e3c;
+      margin-top: 20px;
+    }
+
+    .test-info {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    ul {
+      line-height: 1.6;
+    }
+
+    code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+
+    strong {
+      color: #d32f2f;
+    }
+  </style>
+</body>
+</html>

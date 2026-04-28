@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Vibe Framework v1.0">
+  <title>Test Page for Vibe Vulnerability Scanner</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://code.jquery.com">
+</head>
+<body>
+  <div class="vibe-app" data-vibe="true">
+    <h1>Vibe Vulnerability Scanner Test Page</h1>
+
+    <p>This page intentionally contains various security issues for testing purposes:</p>
+
+    <h2>1. Old jQuery Version (Known Vulnerable)</h2>
+    <p>Loading an old version of jQuery that may have known vulnerabilities:</p>
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+
+    <h2>2. XSS Vulnerabilities</h2>
+    <button onclick="alert('XSS')">Click me (inline event handler)</button>
+
+    <h2>3. Insecure Dependency</h2>
+    <p>Attempting to load a script over HTTP (modern browsers will block this):</p>
+    <!-- <script src="http://example.com/insecure.js"></script> -->
+
+    <h2>4. CDN without SRI</h2>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <h2>5. Exposed API Key (Example)</h2>
+    <div style="display:none;">
+      API_KEY=sk-1234567890abcdefghijklmnopqrstuvwxyz
+      SECRET_TOKEN=abc123def456ghi789jkl012mno345pqr678stu901vwx234yz
+    </div>
+
+    <h2>6. CVE Mention</h2>
+    <p>This system may be affected by CVE-2021-44228 (Log4Shell)</p>
+
+    <h2>7. innerHTML Usage</h2>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('dynamic-content');
+        if (container) {
+          container.innerHTML = '<p>This was set using innerHTML</p>';
+        }
+      });
+    </script>
+    <div id="dynamic-content"></div>
+
+    <h2>Scan Results</h2>
+    <p>Open the Vibe Vulnerability Scanner extension to see detected vulnerabilities.</p>
+    <p>Expected findings:</p>
+    <ul>
+      <li>Vibe app detected ✓</li>
+      <li>Old jQuery version (check against CISA KEV)</li>
+      <li>XSS: Inline event handler</li>
+      <li>XSS: innerHTML usage</li>
+      <li>Missing SRI on Bootstrap CDN</li>
+      <li>Weak CSP (unsafe-inline)</li>
+      <li>Exposed API keys/tokens</li>
+      <li>CVE mentioned in content</li>
+    </ul>
+  </div>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vibe Vulnerability Scanner</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🛡️ Vibe Vuln Scanner</h1>
+      <p class="subtitle">Security analysis for vibe-coded apps</p>
+    </header>
+
+    <div id="loading" class="loading">
+      <p>Scanning page...</p>
+    </div>
+
+    <div id="results" class="results" style="display: none;">
+      <div id="app-status" class="app-status">
+        <span id="vibe-indicator"></span>
+      </div>
+
+      <div class="summary">
+        <div class="stat">
+          <span class="stat-number" id="total-vulns">0</span>
+          <span class="stat-label">Vulnerabilities</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number critical" id="critical-count">0</span>
+          <span class="stat-label">Critical</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number high" id="high-count">0</span>
+          <span class="stat-label">High</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number medium" id="medium-count">0</span>
+          <span class="stat-label">Medium</span>
+        </div>
+      </div>
+
+      <div id="vulnerabilities-list" class="vulnerabilities-list">
+        <!-- Vulnerabilities will be populated here -->
+      </div>
+
+      <div class="action-buttons">
+        <button id="rescan-btn" class="btn">🔄 Rescan Page</button>
+        <button id="export-btn" class="btn btn-secondary">📥 Export Report</button>
+        <button id="history-btn" class="btn btn-secondary">📊 View History</button>
+      </div>
+
+      <div id="export-menu" class="export-menu" style="display: none;">
+        <button id="export-json" class="export-option">Export as JSON</button>
+        <button id="export-csv" class="export-option">Export as CSV</button>
+      </div>
+
+      <div id="history-panel" class="history-panel" style="display: none;">
+        <h3>Scan History</h3>
+        <div id="history-list" class="history-list">
+          <!-- History items will be populated here -->
+        </div>
+        <button id="close-history" class="btn btn-small">Close</button>
+      </div>
+    </div>
+
+    <div id="error" class="error" style="display: none;">
+      <p>Error loading scan results</p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
