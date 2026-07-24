@@ -247,7 +247,9 @@ class VulnerabilityScanner {
       }
 
       // Missing SRI (informational, not a vuln by itself)
-      if (src && src.includes('cdn') && !script.integrity) {
+      var CDN_DOMAINS = ["cdn.jsdelivr.net","cdnjs.cloudflare.com","unpkg.com","esm.sh","skypack.dev","cdn.skypack.dev","rawgit.com","ajax.googleapis.com","ajax.aspnetcdn.com","code.jquery.com","stackpath.bootstrapcdn.com"];
+      var isCDN = CDN_DOMAINS.some(function(d) { return src.includes(d); }) || src.includes("cdn");
+      if (src && isCDN && !script.integrity) {
         findings.push(this.createFinding({
           type: 'MISSING_SRI',
           severity: 'LOW',
@@ -286,6 +288,20 @@ class VulnerabilityScanner {
         return { name: pattern.name, version: match[1] };
       }
     }
+
+    // Generic CDN URL parsing:
+    var m;
+    // unpkg.com/package@version
+    m = src.match(/unpkg\.com\/@([^/]+)\/([^@/]+)@([0-9]+\.[0-9]+[.0-9]*)/);
+    if (m) return { name: "@" + m[1] + "/" + m[2], version: m[3] };
+    m = src.match(/unpkg\.com\/([^@/]+)@([0-9]+\.[0-9]+[.0-9]*)/);
+    if (m) return { name: m[1], version: m[2] };
+    // jsdelivr.net/npm/package@version
+    m = src.match(/jsdelivr\.net\/npm\/([^@/]+)@([0-9]+\.[0-9]+[.0-9]*)/);
+    if (m) return { name: m[1], version: m[2] };
+    // cdnjs.cloudflare.com/ajax/libs/package/version
+    m = src.match(/cdnjs\.cloudflare\.com\/ajax\/libs\/([^/]+)\/([0-9]+\.[0-9]+[.0-9]*)/);
+    if (m) return { name: m[1], version: m[2] };
 
     return null;
   }
@@ -578,6 +594,30 @@ class VulnerabilityScanner {
             }
           }
         }
+
+        // OSV.dev direct query
+        try {
+          var osvResp = await chrome.runtime.sendMessage({ action: "getOSVVulnerabilities", packageName: (libData.name || libName).toLowerCase(), version: libData.version });
+          if (osvResp && osvResp.results) {
+            var self = this;
+            osvResp.results.forEach(function(osv) {
+              if (!osv.affectsVersion) return;
+              var already = findings.some(function(f) { return f.evidence && f.evidence.cveId && osv.aliases && osv.aliases.includes(f.evidence.cveId); });
+              if (already) return;
+              var sev = osv.severity === "CRITICAL" ? "CRITICAL" : osv.severity === "HIGH" ? "HIGH" : osv.severity === "MODERATE" ? "MEDIUM" : "LOW";
+              findings.push(self.createFinding({ type: "OSV_VULNERABILITY", severity: sev, confidence: "high", category: "confirmed", title: "Vulnerable Dependency: " + libName + " " + libData.version, description: osv.summary || (libName + " " + libData.version + " has a known vulnerability."), evidence: { detectedProduct: libName, detectedVersion: libData.version, osvId: osv.id, aliases: (osv.aliases||[]).join(", "), fixedVersion: osv.fixedVersion || "Unknown" }, remediation: osv.fixedVersion ? "Upgrade " + libName + " to " + osv.fixedVersion + " or later." : "Update " + libName + " to the latest version." }));
+            });
+          }
+        } catch (e) { /* OSV unavailable */ }
+        // Typosquatting check
+        if (libData.url) {
+          try {
+            var tsResp = await chrome.runtime.sendMessage({ action: "checkTyposquatting", packageName: (libData.name || libName).toLowerCase() });
+            if (tsResp && tsResp.isTyposquat) {
+              findings.push(this.createFinding({ type: "SUPPLY_CHAIN_TYPOSQUAT", severity: "HIGH", confidence: "medium", category: "heuristic", title: "Possible Typosquatting: " + (libData.name || libName), description: "Package name is very similar to " + tsResp.similarTo + " (edit distance: " + tsResp.distance + "). May be a typosquatting attack.", evidence: { packageName: libData.name || libName, similarTo: tsResp.similarTo, editDistance: tsResp.distance, url: libData.url }, remediation: "Verify this is the correct package. Did you mean " + tsResp.similarTo + "?" }));
+            }
+          } catch (e) { /* ignore */ }
+        }
       }
 
       // CVE mentions in page text (informational only)
@@ -840,7 +880,11 @@ class VulnerabilityScanner {
         regex: /eyJ[a-zA-Z0-9_-]{30,}\.eyJ[a-zA-Z0-9_-]{30,}\.[a-zA-Z0-9_-]{30,}/g,
         name: 'JWT Token',
         minLength: 100
-      }
+      },
+      { regex: /sk-ant-[a-zA-Z0-9_-]{40,}/g, name: "Anthropic API Key", minLength: 50 },
+      { regex: /AIza[0-9A-Za-z_\-]{35}/g, name: "Google API Key", minLength: 39 },
+      { regex: /-----BEGIN [A-Z ]* PRIVATE KEY-----/g, name: "Private Key", minLength: 30 },
+      { regex: /AccountKey=[a-zA-Z0-9+\/]{40,}={0,2}/g, name: "Azure Storage Key", minLength: 44 }
     ];
 
     // Scan visible text
@@ -923,7 +967,7 @@ class VulnerabilityScanner {
     const allElements = document.querySelectorAll('*');
     allElements.forEach(el => {
       Array.from(el.attributes).forEach(attr => {
-        if (attr.name.startsWith('data-') || attr.name.includes('key') || attr.name.includes('token')) {
+        if (attr.name.startsWith('data-') || attr.name.includes('key') || attr.name.includes('token') || attr.name.includes('secret') || attr.name.includes('auth') || attr.name.includes('password')) {
           this.scanTextForSecrets(attr.value, patterns, 'DOM attributes', results);
         }
       });
@@ -1090,7 +1134,84 @@ class VulnerabilityScanner {
       }));
     }
 
+    // Referrer-Policy check
+    var referrerPolicy = httpHeaders && httpHeaders["referrer-policy"];
+    if (!referrerPolicy) {
+      findings.push(this.createFinding({ type: "MISSING_REFERRER_POLICY", severity: "LOW", confidence: "high", category: "confirmed", title: "Missing Referrer-Policy Header", description: "Referrer-Policy not set. Browsers may leak URL data in Referer header.", remediation: "Add Referrer-Policy: strict-origin-when-cross-origin header." }));
+    } else if (referrerPolicy.toLowerCase() === "unsafe-url") {
+      findings.push(this.createFinding({ type: "UNSAFE_REFERRER_POLICY", severity: "MEDIUM", confidence: "high", category: "confirmed", title: "Unsafe Referrer-Policy", description: "Referrer-Policy: unsafe-url sends full URLs in Referer, leaking sensitive data.", evidence: { value: referrerPolicy }, remediation: "Change to strict-origin-when-cross-origin." }));
+    }
+    if (!httpHeaders || !httpHeaders["permissions-policy"]) {
+      findings.push(this.createFinding({ type: "MISSING_PERMISSIONS_POLICY", severity: "LOW", confidence: "high", category: "informational", title: "Missing Permissions-Policy Header", description: "Permissions-Policy not set. Third-party scripts may access sensitive APIs.", remediation: "Add Permissions-Policy: camera=(), microphone=(), geolocation=()" }));
+    }
+    var xssProtectionHeader = httpHeaders && httpHeaders["x-xss-protection"];
+    if (xssProtectionHeader && xssProtectionHeader.includes("1") && xssProtectionHeader.toLowerCase().includes("mode=block")) {
+      findings.push(this.createFinding({ type: "DANGEROUS_XSS_PROTECTION_HEADER", severity: "LOW", confidence: "high", category: "confirmed", title: "X-XSS-Protection: 1; mode=block Is Harmful", description: "This header enables an XSS attack vector in legacy IE. Set to 0 and use CSP instead.", evidence: { value: xssProtectionHeader }, remediation: "Set X-XSS-Protection: 0" }));
+    }
+
     return findings;
+  }
+
+  async scanCookieAttributes() {
+    var findings = [];
+    try {
+      var response = await chrome.runtime.sendMessage({ action: "getCookies" });
+      var cookies = (response && response.cookies) || [];
+      var insecure = [], nonHttpOnly = [], noSameSite = [];
+      cookies.forEach(function(c) {
+        if (!c.secure && window.location.protocol === "https:") insecure.push(c.name);
+        if (!c.httpOnly) nonHttpOnly.push(c.name);
+        if (!c.sameSite || c.sameSite === "no_restriction") noSameSite.push(c.name);
+      });
+      if (insecure.length > 0) findings.push(this.createFinding({ type: "INSECURE_COOKIE", severity: "MEDIUM", confidence: "high", category: "confirmed", title: "Cookies Missing Secure Flag", description: insecure.length + " cookie(s) without Secure flag on HTTPS.", evidence: { cookies: insecure.slice(0, 5) }, remediation: "Set Secure attribute on all cookies served over HTTPS." }));
+      if (nonHttpOnly.length > 0) findings.push(this.createFinding({ type: "COOKIE_WITHOUT_HTTPONLY", severity: "MEDIUM", confidence: "high", category: "confirmed", title: "Cookies Without HttpOnly Flag", description: nonHttpOnly.length + " cookie(s) accessible via JavaScript. Can be stolen via XSS.", evidence: { cookies: nonHttpOnly.slice(0, 5) }, remediation: "Set HttpOnly on session and sensitive cookies." }));
+      if (noSameSite.length > 0) findings.push(this.createFinding({ type: "COOKIE_WITHOUT_SAMESITE", severity: "LOW", confidence: "high", category: "confirmed", title: "Cookies Without SameSite", description: noSameSite.length + " cookie(s) without SameSite attribute, enabling CSRF.", evidence: { cookies: noSameSite.slice(0, 5) }, remediation: "Set SameSite=Lax or SameSite=Strict on all cookies." }));
+    } catch (e) { /* ignore */ }
+    return findings;
+  }
+
+  scanPrototypePollution() {
+    var findings = [];
+    var scripts = Array.from(document.querySelectorAll("script:not([src])"));
+    var dangerous = [/__proto__\[/, /\["__proto__"\]/, /constructor\.prototype/, /Object\.assign\(\{\}/];
+    var matches = [];
+    scripts.forEach(function(s, idx) {
+      var c = s.textContent;
+      dangerous.forEach(function(p) {
+        if (p.test(c)) {
+          var i = c.search(p);
+          matches.push({ sample: c.substring(Math.max(0,i-20), i+80).replace(/\n/g," "), scriptIndex: idx });
+        }
+      });
+    });
+    if (matches.length > 0) {
+      findings.push(this.createFinding({ type: "PROTOTYPE_POLLUTION_PATTERN", severity: "MEDIUM", confidence: "medium", category: "heuristic", title: "Potential Prototype Pollution Pattern", description: "Found " + matches.length + " pattern(s) that may enable prototype pollution if combined with user-controlled keys.", evidence: { count: matches.length, samples: matches.slice(0,2).map(function(m){return m.sample;}) }, remediation: "Use Object.create(null) for key-value stores. Validate all keys against an allowlist." }));
+    }
+    return findings;
+  }
+
+  scanPostMessage() {
+    var findings = [];
+    var scripts = Array.from(document.querySelectorAll("script:not([src])"));
+    scripts.forEach(function(s, idx) {
+      var c = s.textContent;
+      if (!c.includes("addEventListener") || !c.includes("message")) return;
+      var re = /addEventListener\s*\(\s*['"]message['"]/g;
+      var match;
+      while ((match = re.exec(c)) !== null) {
+        var surrounding = c.substring(match.index, match.index + 600);
+        if (!/event\.origin|e\.origin/.test(surrounding)) {
+          findings.push(this.createFinding({ type: "POSTMESSAGE_NO_ORIGIN_CHECK", severity: "HIGH", confidence: "medium", category: "heuristic", title: "postMessage Handler Without Origin Validation", description: "Message event listener does not check event.origin. Cross-origin messages from any site may be processed.", evidence: { scriptIndex: idx, sample: surrounding.substring(0,150).replace(/\n/g," ") }, remediation: "Always validate event.origin against an allowlist before processing event.data." }));
+        }
+      }
+    });
+    return findings;
+  }
+
+  async analyzeFindingWithLLM(analysisType, context, finding) {
+    try {
+      return await chrome.runtime.sendMessage({ action: "analyzeLLM", analysisType: analysisType, context: context, finding: finding });
+    } catch(e) { return null; }
   }
 
   /**
@@ -1099,17 +1220,11 @@ class VulnerabilityScanner {
   async runScans() {
     this.findings = [];
 
-    const syncFindings = [
-      ...this.scanXSSPatterns(),
-      ...this.scanDependencies(),
-      ...this.scanSecretExposure()
-    ];
-
-    // Async scans
-    const kevFindings = await this.scanKEVCorrelation();
-    const securityHeaderFindings = await this.scanSecurityHeaders();
-
-    this.findings = [...syncFindings, ...kevFindings, ...securityHeaderFindings];
+    var syncFindings = [...this.scanXSSPatterns(), ...this.scanDependencies(), ...this.scanSecretExposure(), ...this.scanPrototypePollution(), ...this.scanPostMessage()];
+    var kevFindings = await this.scanKEVCorrelation();
+    var headerFindings = await this.scanSecurityHeaders();
+    var cookieFindings = await this.scanCookieAttributes();
+    this.findings = [...syncFindings, ...kevFindings, ...headerFindings, ...cookieFindings];
     this.findings = this.deduplicateFindings();
 
     // Send results with session ID
@@ -1124,15 +1239,39 @@ class VulnerabilityScanner {
   }
 }
 
+function debounce(fn, ms) {
+  var t;
+  return function() { var args = arguments; clearTimeout(t); t = setTimeout(function(){ fn.apply(null,args); }, ms); };
+}
+
+function setupMutationObserver(scanner) {
+  if (typeof MutationObserver === "undefined" || !document.body) return;
+  var scanCount = 0;
+  var rescan = debounce(function() {
+    if (scanCount++ >= 10) return;
+    var fresh = [...scanner.scanXSSPatterns(), ...scanner.scanDependencies(), ...scanner.scanSecretExposure(), ...scanner.scanPrototypePollution(), ...scanner.scanPostMessage()];
+    var seen = new Set(scanner.findings.map(function(f){return f.id;}));
+    var novel = fresh.filter(function(f){return !seen.has(f.id);});
+    if (novel.length > 0) {
+      scanner.findings = scanner.deduplicateFindings();
+      chrome.runtime.sendMessage({ action: "scanComplete", url: window.location.href, vulnerabilities: scanner.findings, sessionId: scanner.scanSessionId });
+    }
+  }, 500);
+  var observer = new MutationObserver(function(muts) {
+    if (muts.some(function(m){ return m.addedNodes.length > 0; })) rescan();
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
 // Auto-run on page load
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     const scanner = new VulnerabilityScanner();
-    scanner.runScans();
+    scanner.runScans().then(function() { setupMutationObserver(scanner); });
   });
 } else {
   const scanner = new VulnerabilityScanner();
-  scanner.runScans();
+  scanner.runScans().then(function() { setupMutationObserver(scanner); });
 }
 
 // Listen for manual scan requests from popup
