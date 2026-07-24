@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vibe Vulnerability Scanner - Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Vibe Vulnerability Scanner - Settings</h1>
+
+    <div class="section">
+      <h2>API Keys (Optional)</h2>
+
+      <div class="field-group">
+        <label for="anthropic-key">Anthropic API Key</label>
+        <div class="input-row">
+          <input type="password" id="anthropic-key" placeholder="sk-ant-..." autocomplete="off">
+          <button class="btn-toggle" data-target="anthropic-key" type="button">Show</button>
+        </div>
+        <div class="note">Unlocks LLM-assisted vulnerability analysis and AI-powered remediation suggestions.</div>
+      </div>
+
+      <div class="field-group">
+        <label for="github-token">GitHub Token</label>
+        <div class="input-row">
+          <input type="password" id="github-token" placeholder="ghp_..." autocomplete="off">
+          <button class="btn-toggle" data-target="github-token" type="button">Show</button>
+        </div>
+        <div class="note">Unlocks GitHub Advisory Database (GHSA) lookups for dependency vulnerability scanning.</div>
+      </div>
+
+      <div class="field-group">
+        <label for="nvd-key">NVD API Key</label>
+        <div class="input-row">
+          <input type="password" id="nvd-key" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off">
+          <button class="btn-toggle" data-target="nvd-key" type="button">Show</button>
+        </div>
+        <div class="note">Unlocks NIST National Vulnerability Database (NVD) for CVE lookups with higher rate limits.</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>LLM Analysis</h2>
+
+      <div class="field-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="llm-enabled">
+          Enable LLM-assisted analysis
+        </label>
+        <div class="note">Sends code snippets to Anthropic API. Requires Anthropic API key.</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Scan Settings</h2>
+
+      <div class="field-group">
+        <label for="min-severity">Minimum Severity to Report</label>
+        <select id="min-severity">
+          <option value="LOW">LOW</option>
+          <option value="MEDIUM">MEDIUM</option>
+          <option value="HIGH">HIGH</option>
+          <option value="CRITICAL">CRITICAL</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label for="suppressed-domains">Suppressed Domains</label>
+        <textarea id="suppressed-domains" rows="4" placeholder="example.com&#10;internal.corp.net"></textarea>
+        <div class="note">One domain per line. Scans will not report vulnerabilities on these domains.</div>
+      </div>
+
+      <div class="field-group">
+        <label for="custom-patterns">Custom Secret Patterns</label>
+        <textarea id="custom-patterns" rows="4" placeholder="MY_SECRET_[A-Z0-9]{32}&#10;corp_token_[a-f0-9]+"></textarea>
+        <div class="note">Custom regex patterns (one per line) to detect additional secret types.</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Export</h2>
+
+      <div class="field-group">
+        <label for="webhook-url">Webhook URL for Scan Results</label>
+        <input type="url" id="webhook-url" placeholder="https://your-server.com/webhook">
+        <div class="note">Scan results will be POSTed as JSON to this URL after each scan completes.</div>
+      </div>
+    </div>
+
+    <button id="save-btn" type="button">Save Settings</button>
+    <div id="status" class="status"></div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
