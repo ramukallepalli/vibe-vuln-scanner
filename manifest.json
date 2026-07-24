@@ -3,13 +3,16 @@
   "name": "Vibe Vulnerability Scanner",
   "version": "1.2.0",
   "description": "Scans web applications for security vulnerabilities",
+  "options_page": "src/options/options.html",
   "permissions": [
     "activeTab",
     "storage",
     "alarms",
     "tabs",
     "webRequest",
-    "downloads"
+    "downloads",
+    "cookies",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"
