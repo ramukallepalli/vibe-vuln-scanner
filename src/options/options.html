@@ -3,94 +3,195 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vibe Vulnerability Scanner - Settings</title>
+  <title>Vibe Vulnerability Scanner — Settings</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Vibe Vulnerability Scanner - Settings</h1>
+  <div class="layout">
 
-    <div class="section">
-      <h2>API Keys (Optional)</h2>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-brand">
+        <img src="../../icons/icon48.png" alt="" class="brand-icon" onerror="this.style.display='none'">
+        <span class="brand-name">Vibe<br>Scanner</span>
+      </div>
+      <ul class="nav-list">
+        <li><a href="#api-keys" class="nav-link active" data-section="api-keys">
+          <span class="nav-icon">🔑</span> API Keys
+        </a></li>
+        <li><a href="#llm" class="nav-link" data-section="llm">
+          <span class="nav-icon">🤖</span> AI Analysis
+        </a></li>
+        <li><a href="#scan" class="nav-link" data-section="scan">
+          <span class="nav-icon">🔍</span> Scan Rules
+        </a></li>
+        <li><a href="#export" class="nav-link" data-section="export">
+          <span class="nav-icon">📤</span> Export
+        </a></li>
+      </ul>
+    </nav>
 
-      <div class="field-group">
-        <label for="anthropic-key">Anthropic API Key</label>
-        <div class="input-row">
-          <input type="password" id="anthropic-key" placeholder="sk-ant-..." autocomplete="off">
-          <button class="btn-toggle" data-target="anthropic-key" type="button">Show</button>
+    <!-- Main content -->
+    <main class="content">
+      <header class="page-header">
+        <h1>Settings</h1>
+        <p class="page-subtitle">All API keys are optional. The scanner works without them.</p>
+      </header>
+
+      <!-- API Keys -->
+      <section class="card" id="api-keys">
+        <div class="card-header">
+          <span class="card-icon">🔑</span>
+          <div>
+            <h2>API Keys</h2>
+            <p class="card-desc">Optional — unlocks enhanced features. Never sent to our servers.</p>
+          </div>
         </div>
-        <div class="note">Unlocks LLM-assisted vulnerability analysis and AI-powered remediation suggestions.</div>
-      </div>
 
-      <div class="field-group">
-        <label for="github-token">GitHub Token</label>
-        <div class="input-row">
-          <input type="password" id="github-token" placeholder="ghp_..." autocomplete="off">
-          <button class="btn-toggle" data-target="github-token" type="button">Show</button>
+        <div class="key-row">
+          <div class="key-meta">
+            <div class="key-name">Anthropic</div>
+            <div class="key-benefit">Enables AI-powered XSS taint analysis and smart remediation</div>
+          </div>
+          <div class="key-input-group">
+            <div class="badge" id="anthropic-badge">Not set</div>
+            <div class="input-wrap">
+              <input type="password" id="anthropic-key" placeholder="sk-ant-..." autocomplete="off">
+              <button class="btn-reveal" data-target="anthropic-key" type="button" aria-label="Show/hide key">👁</button>
+            </div>
+          </div>
         </div>
-        <div class="note">Unlocks GitHub Advisory Database (GHSA) lookups for dependency vulnerability scanning.</div>
-      </div>
 
-      <div class="field-group">
-        <label for="nvd-key">NVD API Key</label>
-        <div class="input-row">
-          <input type="password" id="nvd-key" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off">
-          <button class="btn-toggle" data-target="nvd-key" type="button">Show</button>
+        <div class="divider"></div>
+
+        <div class="key-row">
+          <div class="key-meta">
+            <div class="key-name">GitHub Token</div>
+            <div class="key-benefit">Raises GitHub Advisory API rate limit from 60 to 5,000 req/hr</div>
+          </div>
+          <div class="key-input-group">
+            <div class="badge" id="github-badge">Not set</div>
+            <div class="input-wrap">
+              <input type="password" id="github-token" placeholder="ghp_..." autocomplete="off">
+              <button class="btn-reveal" data-target="github-token" type="button" aria-label="Show/hide key">👁</button>
+            </div>
+          </div>
         </div>
-        <div class="note">Unlocks NIST National Vulnerability Database (NVD) for CVE lookups with higher rate limits.</div>
+
+        <div class="divider"></div>
+
+        <div class="key-row">
+          <div class="key-meta">
+            <div class="key-name">NVD API Key</div>
+            <div class="key-benefit">Higher rate limits for NIST CVE lookups</div>
+          </div>
+          <div class="key-input-group">
+            <div class="badge" id="nvd-badge">Not set</div>
+            <div class="input-wrap">
+              <input type="password" id="nvd-key" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off">
+              <button class="btn-reveal" data-target="nvd-key" type="button" aria-label="Show/hide key">👁</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI Analysis -->
+      <section class="card" id="llm">
+        <div class="card-header">
+          <span class="card-icon">🤖</span>
+          <div>
+            <h2>AI Analysis</h2>
+            <p class="card-desc">Requires an Anthropic API key. Disabled by default.</p>
+          </div>
+          <!-- Toggle switch -->
+          <label class="toggle" title="Enable AI-assisted analysis">
+            <input type="checkbox" id="llm-enabled">
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="llm-features" id="llm-features">
+          <div class="feature-pill">XSS taint tracking</div>
+          <div class="feature-pill">Secret validation</div>
+          <div class="feature-pill">Smart remediation</div>
+        </div>
+        <p class="note">Code snippets from the active page are sent to the Anthropic API when enabled. No data reaches our servers.</p>
+      </section>
+
+      <!-- Scan Rules -->
+      <section class="card" id="scan">
+        <div class="card-header">
+          <span class="card-icon">🔍</span>
+          <div>
+            <h2>Scan Rules</h2>
+            <p class="card-desc">Control what gets reported.</p>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Minimum Severity</label>
+          <div class="severity-picker" id="severity-picker">
+            <button class="sev-btn" data-value="LOW" type="button">
+              <span class="sev-dot low"></span> Low
+            </button>
+            <button class="sev-btn" data-value="MEDIUM" type="button">
+              <span class="sev-dot medium"></span> Medium
+            </button>
+            <button class="sev-btn" data-value="HIGH" type="button">
+              <span class="sev-dot high"></span> High
+            </button>
+            <button class="sev-btn" data-value="CRITICAL" type="button">
+              <span class="sev-dot critical"></span> Critical
+            </button>
+          </div>
+          <input type="hidden" id="min-severity" value="LOW">
+        </div>
+
+        <div class="field-group">
+          <label for="suppressed-domains">
+            Suppressed Domains
+            <span class="label-count" id="domain-count">0 domains</span>
+          </label>
+          <textarea id="suppressed-domains" rows="4" placeholder="example.com&#10;internal.corp.net&#10;localhost"></textarea>
+          <p class="note">One domain per line. No findings will be reported on these sites.</p>
+        </div>
+
+        <div class="field-group">
+          <label for="custom-patterns">
+            Custom Secret Patterns
+            <span class="label-count" id="pattern-count">0 patterns</span>
+          </label>
+          <textarea id="custom-patterns" rows="4" placeholder="MY_TOKEN_[A-Z0-9]{32}&#10;corp_secret_[a-f0-9]+"></textarea>
+          <p class="note">Regex patterns (one per line) to detect additional secret types specific to your organisation.</p>
+        </div>
+      </section>
+
+      <!-- Export -->
+      <section class="card" id="export">
+        <div class="card-header">
+          <span class="card-icon">📤</span>
+          <div>
+            <h2>Export</h2>
+            <p class="card-desc">Send scan results to your own systems.</p>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="webhook-url">Webhook URL</label>
+          <input type="url" id="webhook-url" placeholder="https://your-server.com/webhook">
+          <p class="note">Scan results are POSTed as JSON to this URL after each scan completes. Leave blank to disable.</p>
+        </div>
+      </section>
+
+      <!-- Save bar -->
+      <div class="save-bar">
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+        <button id="save-btn" type="button">Save Settings</button>
       </div>
-    </div>
 
-    <div class="section">
-      <h2>LLM Analysis</h2>
-
-      <div class="field-group">
-        <label class="checkbox-label">
-          <input type="checkbox" id="llm-enabled">
-          Enable LLM-assisted analysis
-        </label>
-        <div class="note">Sends code snippets to Anthropic API. Requires Anthropic API key.</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <h2>Scan Settings</h2>
-
-      <div class="field-group">
-        <label for="min-severity">Minimum Severity to Report</label>
-        <select id="min-severity">
-          <option value="LOW">LOW</option>
-          <option value="MEDIUM">MEDIUM</option>
-          <option value="HIGH">HIGH</option>
-          <option value="CRITICAL">CRITICAL</option>
-        </select>
-      </div>
-
-      <div class="field-group">
-        <label for="suppressed-domains">Suppressed Domains</label>
-        <textarea id="suppressed-domains" rows="4" placeholder="example.com&#10;internal.corp.net"></textarea>
-        <div class="note">One domain per line. Scans will not report vulnerabilities on these domains.</div>
-      </div>
-
-      <div class="field-group">
-        <label for="custom-patterns">Custom Secret Patterns</label>
-        <textarea id="custom-patterns" rows="4" placeholder="MY_SECRET_[A-Z0-9]{32}&#10;corp_token_[a-f0-9]+"></textarea>
-        <div class="note">Custom regex patterns (one per line) to detect additional secret types.</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <h2>Export</h2>
-
-      <div class="field-group">
-        <label for="webhook-url">Webhook URL for Scan Results</label>
-        <input type="url" id="webhook-url" placeholder="https://your-server.com/webhook">
-        <div class="note">Scan results will be POSTed as JSON to this URL after each scan completes.</div>
-      </div>
-    </div>
-
-    <button id="save-btn" type="button">Save Settings</button>
-    <div id="status" class="status"></div>
+    </main>
   </div>
 
   <script src="options.js"></script>
