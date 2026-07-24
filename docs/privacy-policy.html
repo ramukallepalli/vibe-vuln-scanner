@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Vibe Vulnerability Scanner</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #222; line-height: 1.7; }
+    h1 { font-size: 1.6em; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    h2 { font-size: 1.1em; margin-top: 2em; color: #333; }
+    p, li { font-size: 0.97em; }
+    ul { padding-left: 1.4em; }
+    .updated { color: #666; font-size: 0.9em; }
+    a { color: #0066cc; }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy — Vibe Vulnerability Scanner</h1>
+  <p class="updated">Last updated: July 2026</p>
+
+  <h2>Overview</h2>
+  <p>Vibe Vulnerability Scanner is a Chrome extension that analyzes the security posture of web pages you visit. It operates entirely on your device. We do not operate any servers, collect personal data, or sell any information.</p>
+
+  <h2>What the extension accesses</h2>
+  <ul>
+    <li><strong>Page content</strong> — Scripts, cookies, HTTP headers, and DOM of the active tab are read locally to perform security analysis. This data never leaves your device except as described below.</li>
+    <li><strong>Cookies</strong> — Cookie metadata (name, flags such as Secure/HttpOnly/SameSite) for the active tab is read to detect insecure cookie configurations. Cookie values are never read or transmitted.</li>
+    <li><strong>Source maps</strong> — If a page exposes JavaScript source map URLs, the extension may fetch those map files to identify bundled dependencies. This is a direct browser fetch; no data passes through our servers.</li>
+    <li><strong>Scan history</strong> — A summary of past scan results is stored locally in <code>chrome.storage.local</code> on your device. It is never uploaded anywhere.</li>
+  </ul>
+
+  <h2>Optional third-party data transmission</h2>
+  <p>All third-party lookups are performed by your browser directly. No data passes through our servers.</p>
+  <ul>
+    <li><strong>OSV.dev</strong> — Package names and versions detected on a page are sent to the open-source OSV.dev API to check for known vulnerabilities. No personal data is included.</li>
+    <li><strong>CISA KEV</strong> — The extension fetches a publicly available vulnerability catalog from cisa.gov. No data from your device is sent.</li>
+    <li><strong>GitHub Advisory Database</strong> — Package names are queried against GitHub's public advisory API. No personal data is included.</li>
+    <li><strong>Anthropic API (optional)</strong> — If you enable LLM-assisted analysis in Settings and provide your own Anthropic API key, small code snippets from the active page may be sent to the Anthropic API for analysis. This feature is <em>disabled by default</em> and requires explicit opt-in. Your API key is stored locally in <code>chrome.storage.sync</code> and is never transmitted to us. Anthropic's privacy policy applies to data sent to their API.</li>
+  </ul>
+
+  <h2>Data we do not collect</h2>
+  <ul>
+    <li>We do not collect names, email addresses, or any personally identifiable information.</li>
+    <li>We do not track browsing history.</li>
+    <li>We do not use analytics or advertising SDKs.</li>
+    <li>We do not sell or share any data with third parties.</li>
+  </ul>
+
+  <h2>Permissions explained</h2>
+  <ul>
+    <li><strong>activeTab / tabs</strong> — Read the URL and content of the tab you are currently viewing, to perform the security scan.</li>
+    <li><strong>cookies</strong> — Read cookie metadata for the active tab to check security flags. Values are never accessed.</li>
+    <li><strong>scripting</strong> — Extract source map URLs embedded in page scripts to identify bundled dependencies.</li>
+    <li><strong>storage</strong> — Save scan results and settings locally on your device.</li>
+    <li><strong>webRequest</strong> — Capture HTTP response headers (CSP, HSTS, etc.) for security analysis.</li>
+    <li><strong>downloads</strong> — Allow you to export scan results as JSON, CSV, or SARIF files.</li>
+    <li><strong>&lt;all_urls&gt;</strong> — Required to scan any website you navigate to, not just a fixed list of domains.</li>
+  </ul>
+
+  <h2>Changes to this policy</h2>
+  <p>If we make material changes, we will update the "Last updated" date above. Continued use of the extension after changes constitutes acceptance.</p>
+
+  <h2>Contact</h2>
+  <p>Questions? Open an issue at <a href="https://github.com/ramukallepalli/vibe-vuln-scanner/issues">github.com/ramukallepalli/vibe-vuln-scanner/issues</a>.</p>
+</body>
+</html>
