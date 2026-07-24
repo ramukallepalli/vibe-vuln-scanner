@@ -1,6 +1,6 @@
 {
   "name": "vibe-vuln-scanner",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Chrome extension to scan web applications for security vulnerabilities using CISA KEV catalog and NVD verification",
   "homepage": "https://github.com/ramukallepalli/vibe-vuln-scanner",
   "bugs": {
