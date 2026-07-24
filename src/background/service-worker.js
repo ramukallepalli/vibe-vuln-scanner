@@ -9,6 +9,11 @@ const NPM_REGISTRY_BASE = 'https://registry.npmjs.org';
 const KEV_REFRESH_ALARM = 'kevRefreshAlarm';
 const KEV_REFRESH_INTERVAL = 6 * 60; // 6 hours in minutes
 
+var OSV_API_BASE = "https://api.osv.dev/v1";
+var GITHUB_ADVISORY_BASE = "https://api.github.com/advisories";
+var settingsCache = null;
+var settingsCacheTime = 0;
+
 // In-memory scan results: Map<tabId, Map<sessionId, result>>
 const scanResults = new Map();
 
@@ -20,6 +25,14 @@ const latestVersionCache = new Map();
 
 // Security headers cache: Map<tabId, headers>
 const capturedHeaders = new Map();
+
+async function getSettings() {
+  if (settingsCache && (Date.now() - settingsCacheTime) < 60000) return settingsCache;
+  var stored = await chrome.storage.sync.get(["anthropicApiKey","githubToken","nvdApiKey","llmEnabled","minSeverity","suppressedDomains","customPatterns","webhookUrl"]);
+  settingsCache = { anthropicApiKey: stored.anthropicApiKey || null, githubToken: stored.githubToken || null, nvdApiKey: stored.nvdApiKey || null, llmEnabled: stored.llmEnabled || false, minSeverity: stored.minSeverity || "LOW", suppressedDomains: stored.suppressedDomains || [], customPatterns: stored.customPatterns || [], webhookUrl: stored.webhookUrl || null };
+  settingsCacheTime = Date.now();
+  return settingsCache;
+}
 
 // ===== HTTP Header Capture =====
 
@@ -127,6 +140,139 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function queryOSVDev(packageName, version) {
+  var cacheKey = "osv_" + packageName + "_" + version;
+  var cached = cveCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < 1800000) return cached.data;
+  try {
+    var body = JSON.stringify({ version: version, package: { name: packageName, ecosystem: "npm" } });
+    var resp = await fetchWithBackoff(OSV_API_BASE + "/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: body });
+    if (!resp.ok) throw new Error("OSV " + resp.status);
+    var data = await resp.json();
+    var vulns = (data.vulns || []).map(function(v) {
+      var affectsVersion = false, fixedVersion = null;
+      (v.affected || []).forEach(function(a) {
+        if (a.versions && a.versions.includes(version)) affectsVersion = true;
+        (a.ranges || []).forEach(function(r) {
+          if (r.type !== "ECOSYSTEM") return;
+          var introduced = null, fixed = null;
+          (r.events || []).forEach(function(e) { if (e.introduced) introduced = e.introduced; if (e.fixed) fixed = e.fixed; });
+          if (introduced !== null) { affectsVersion = true; if (fixed) fixedVersion = fixed; }
+        });
+      });
+      var sev = "MEDIUM";
+      var cvss = v.severity && v.severity[0];
+      if (cvss) { var score = parseFloat(cvss.score)||0; sev = score>=9?"CRITICAL":score>=7?"HIGH":score>=4?"MEDIUM":"LOW"; }
+      return { id: v.id, summary: v.summary || "", severity: sev, aliases: v.aliases||[], fixedVersion: fixedVersion, affectsVersion: affectsVersion };
+    });
+    cveCache.set(cacheKey, { data: vulns, timestamp: Date.now() });
+    return vulns;
+  } catch(e) { console.error("OSV query failed:", e); return []; }
+}
+
+async function queryGitHubAdvisories(packageName, version) {
+  var settings = await getSettings();
+  var headers = { "Accept": "application/vnd.github+json" };
+  if (settings.githubToken) headers["Authorization"] = "Bearer " + settings.githubToken;
+  try {
+    var url = GITHUB_ADVISORY_BASE + "?type=reviewed&ecosystem=npm&affects=" + encodeURIComponent(packageName) + "&per_page=20";
+    var resp = await fetchWithBackoff(url, { headers: headers });
+    if (!resp.ok) return [];
+    var advisories = await resp.json();
+    return (advisories||[]).map(function(a) {
+      var vuln = (a.vulnerabilities||[]).find(function(v){ return v.package && v.package.ecosystem==="npm" && v.package.name===packageName; });
+      return { ghsaId: a.ghsa_id, severity: (a.severity||"UNKNOWN").toUpperCase(), summary: a.summary||"", fixedVersion: vuln && vuln.patched_versions ? vuln.patched_versions.replace(/[>=<^~]/g,"").split(",")[0].trim() : null };
+    });
+  } catch(e) { return []; }
+}
+
+var TOP_NPM_PACKAGES = ["lodash","react","vue","angular","jquery","axios","moment","express","typescript","webpack","eslint","prettier","jest","mocha","chai","redux","mobx","rxjs","socket.io","async","underscore","cheerio","request","uuid","d3","three","chart.js","bootstrap","tailwindcss","classnames","styled-components","next","nuxt","gatsby","svelte","backbone","ember","mongoose","sequelize","knex","typeorm","prisma","firebase","passport","jsonwebtoken","bcrypt","helmet","cors","marked","dompurify","sanitize-html","xss","validator","joi","ajv","date-fns","luxon","dayjs","ramda","immer","zustand","pinia","vuex","handlebars","mustache","pug","ejs","highlight.js","prismjs","codemirror","dotenv","chalk","commander","yargs","minimist","cross-fetch","node-fetch","got"];
+
+function levenshtein(a, b) {
+  var dp = [];
+  for (var i = 0; i <= a.length; i++) { dp[i] = [i]; }
+  for (var j = 0; j <= b.length; j++) { dp[0][j] = j; }
+  for (var i = 1; i <= a.length; i++) {
+    for (var j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function checkTyposquatting(packageName) {
+  var name = packageName.toLowerCase().replace(/^@[^/]+\//, "");
+  if (TOP_NPM_PACKAGES.includes(name)) return { isTyposquat: false, similarTo: null, distance: 0 };
+  var closest = null, minDist = Infinity;
+  for (var i = 0; i < TOP_NPM_PACKAGES.length; i++) {
+    var pkg = TOP_NPM_PACKAGES[i];
+    if (Math.abs(name.length - pkg.length) > 3) continue;
+    var dist = levenshtein(name, pkg);
+    if (dist < minDist && dist <= 2) { minDist = dist; closest = pkg; }
+  }
+  return { isTyposquat: closest !== null, similarTo: closest, distance: minDist === Infinity ? 999 : minDist };
+}
+
+async function analyzeWithLLM(analysisType, context, finding) {
+  var settings = await getSettings();
+  if (!settings.llmEnabled || !settings.anthropicApiKey) return { result: null, confidence: null, isRealIssue: null };
+  var prompt = "";
+  if (analysisType === "xss-taint") {
+    prompt = "Does user-controlled input reach the dangerous JavaScript sink in this code? Answer REAL or SAFE then explain in 1 sentence.\n\n" + context;
+  } else if (analysisType === "secret-validate") {
+    prompt = "Is this a real credential or a placeholder/example value? Answer REAL or PLACEHOLDER then explain in 1 sentence.\n\n" + context;
+  } else if (analysisType === "remediation") {
+    prompt = "Give a specific 2-sentence remediation for: " + (finding ? finding.type : "unknown") + " with evidence: " + JSON.stringify(finding ? finding.evidence : {});
+  }
+  try {
+    var resp = await fetchWithBackoff("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": settings.anthropicApiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 256, messages: [{ role: "user", content: prompt }] }) });
+    if (!resp.ok) throw new Error("Anthropic " + resp.status);
+    var data = await resp.json();
+    var text = (data.content && data.content[0] && data.content[0].text) || "";
+    var isRealIssue = null;
+    if (analysisType === "xss-taint" || analysisType === "secret-validate") isRealIssue = text.trim().toUpperCase().startsWith("REAL");
+    return { result: text, confidence: "high", isRealIssue: isRealIssue };
+  } catch(e) { return { result: null, confidence: null, isRealIssue: null }; }
+}
+
+async function analyzeSourceMap(mapUrl) {
+  try {
+    var resp = await fetchWithBackoff(mapUrl, {}, 2);
+    if (!resp.ok) return { dependencies: [] };
+    var text = await resp.text();
+    var mapData;
+    try { mapData = JSON.parse(text); } catch(e) { return { dependencies: [] }; }
+    var dependencies = [], seen = new Set();
+    // Extract from embedded sourcesContent
+    (mapData.sourcesContent || []).forEach(function(c) {
+      if (!c || !c.includes('dependencies')) return;
+      try {
+        var pkg = JSON.parse(c);
+        if (pkg.dependencies) Object.keys(pkg.dependencies).forEach(function(name) {
+          var ver = (pkg.dependencies[name] || "").replace(/[^\d.]/g,"");
+          var key = name + "@" + ver;
+          if (!seen.has(key)) { seen.add(key); dependencies.push({ name: name, version: ver }); }
+        });
+      } catch(e) {}
+    });
+    // Extract package names from source paths
+    (mapData.sources || []).forEach(function(src) {
+      var m = src.match(/node_modules\/([^/]+)/);
+      if (m && !seen.has(m[1])) { seen.add(m[1]); dependencies.push({ name: m[1], version: "unknown" }); }
+    });
+    return { dependencies: dependencies };
+  } catch(e) { return { dependencies: [] }; }
+}
+
+async function getCookiesForTab(tabId, url) {
+  try {
+    if (!chrome.cookies) return [];
+    var urlObj = new URL(url);
+    var cookies = await chrome.cookies.getAll({ domain: urlObj.hostname });
+    return cookies.map(function(c) { return { name: c.name, secure: c.secure, httpOnly: c.httpOnly, sameSite: c.sameSite, session: c.session, domain: c.domain }; });
+  } catch(e) { return []; }
+}
+
 // Single message router to avoid listener conflicts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handleMessage(message, sender, sendResponse);
@@ -185,6 +331,50 @@ async function handleMessage(message, sender, sendResponse) {
         break;
       }
 
+      case "getOSVVulnerabilities": {
+        var results = await queryOSVDev(message.packageName, message.version);
+        sendResponse({ results: results });
+        break;
+      }
+      case "getGitHubAdvisories": {
+        var results = await queryGitHubAdvisories(message.packageName, message.version);
+        sendResponse({ results: results });
+        break;
+      }
+      case "getSettings": {
+        var s = await getSettings();
+        sendResponse(s);
+        break;
+      }
+      case "saveSettings": {
+        await chrome.storage.sync.set(message.settings || {});
+        settingsCache = null;
+        sendResponse({ success: true });
+        break;
+      }
+      case "analyzeLLM": {
+        var r = await analyzeWithLLM(message.analysisType, message.context, message.finding);
+        sendResponse(r);
+        break;
+      }
+      case "checkTyposquatting": {
+        sendResponse(checkTyposquatting(message.packageName || ""));
+        break;
+      }
+      case "analyzeSourceMap": {
+        var r = await analyzeSourceMap(message.mapUrl);
+        sendResponse(r);
+        break;
+      }
+      case "getCookies": {
+        var tabId2 = message.tabId || (sender.tab && sender.tab.id);
+        var tab2 = tabId2 ? await chrome.tabs.get(tabId2).catch(function(){return null;}) : null;
+        var url2 = (tab2 && tab2.url) || "";
+        var ck = await getCookiesForTab(tabId2, url2);
+        sendResponse({ cookies: ck });
+        break;
+      }
+
       default:
         sendResponse({ error: 'Unknown action' });
     }
@@ -218,6 +408,45 @@ async function handleScanComplete(message, sender) {
   await saveScanResult(message.url, scanResult);
 
   updateBadge(tabId, message.vulnerabilities.length);
+
+  // Fire-and-forget: scan source maps for bundled vulnerable dependencies
+  (async function() {
+    try {
+      if (!chrome.scripting) return;
+      var scriptResults = await chrome.scripting.executeScript({ target: { tabId: tabId }, func: function() {
+        var maps = [];
+        document.querySelectorAll("script:not([src])").forEach(function(s) {
+          var m = s.textContent.match(/\/\/# sourceMappingURL=([^\s]+)/);
+          if (m) maps.push(m[1]);
+        });
+        return maps;
+      }}).catch(function(){return null;});
+      if (!scriptResults || !scriptResults[0] || !scriptResults[0].result || !scriptResults[0].result.length) return;
+      var tab3 = await chrome.tabs.get(tabId).catch(function(){return null;});
+      if (!tab3) return;
+      var mapUrls = scriptResults[0].result.slice(0, 3);
+      for (var mi = 0; mi < mapUrls.length; mi++) {
+        var mapUrl = mapUrls[mi];
+        var fullUrl = mapUrl.startsWith("http") ? mapUrl : new URL(mapUrl, tab3.url).href;
+        var smResult = await analyzeSourceMap(fullUrl);
+        var knownDeps = smResult.dependencies.filter(function(d){return d.version !== "unknown";}).slice(0, 20);
+        var extra = [];
+        for (var di = 0; di < knownDeps.length; di++) {
+          var dep = knownDeps[di];
+          var osvVulns = await queryOSVDev(dep.name, dep.version);
+          var affected = osvVulns.filter(function(v){return v.affectsVersion;});
+          if (affected.length > 0) {
+            extra.push({ id: "sourcemap-" + dep.name + "-" + dep.version, type: "BUNDLED_VULNERABLE_DEPENDENCY", severity: affected[0].severity, confidence: "high", category: "confirmed", title: "Vulnerable Bundled Dep: " + dep.name + " " + dep.version, description: "Source map reveals " + dep.name + "@" + dep.version + " has " + affected.length + " known vulnerability(s).", evidence: { package: dep.name, version: dep.version, osvIds: affected.map(function(v){return v.id;}).join(", ") }, remediation: affected[0].fixedVersion ? "Upgrade " + dep.name + " to " + affected[0].fixedVersion : "Update " + dep.name + " to latest", metadata: {}, timestamp: Date.now() });
+          }
+        }
+        if (extra.length > 0) {
+          var sessionData = scanResults.get(tabId);
+          var existing = sessionData && sessionData.get(createSessionId(message.url));
+          if (existing) { existing.vulnerabilities.push.apply(existing.vulnerabilities, extra); updateBadge(tabId, existing.vulnerabilities.length); }
+        }
+      }
+    } catch(e) { console.error("Source map scan error:", e); }
+  })();
 }
 
 function createSessionId(url) {
