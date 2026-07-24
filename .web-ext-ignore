@@ -1,0 +1,14 @@
+__tests__
+node_modules
+dist
+docs
+.git
+.github
+.claude
+coverage
+*.test.js
+jest.config.js
+package-lock.json
+CLAUDE.md
+AUTHORS.md
+CONTRIBUTING.md
