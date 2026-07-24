@@ -84,6 +84,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       historyPanel.style.display = 'none';
     });
 
+    const settingsBtn = document.getElementById("settings-btn");
+    if (settingsBtn) settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
+    const exportSarifBtn = document.getElementById("export-sarif");
+    if (exportSarifBtn) exportSarifBtn.addEventListener("click", () => { exportAsSARIF(); exportMenu.style.display = "none"; });
+
   } catch (error) {
     console.error('Popup error:', error);
     loadingEl.style.display = 'none';
@@ -389,6 +394,64 @@ function exportAsCSV() {
     } else {
       console.log('Export successful:', downloadId);
     }
+    URL.revokeObjectURL(url);
+  });
+}
+
+function exportAsSARIF() {
+  if (!currentResults) { showError("No scan results to export"); return; }
+  const rulesMap = {};
+  const sarifResults = [];
+  function sarifLevel(severity) {
+    if (severity === "CRITICAL" || severity === "HIGH") return "error";
+    if (severity === "MEDIUM") return "warning";
+    if (severity === "LOW") return "note";
+    return "none";
+  }
+  currentResults.vulnerabilities.forEach(function(vuln) {
+    if (!rulesMap[vuln.type]) {
+      rulesMap[vuln.type] = {
+        id: vuln.type,
+        name: vuln.title || formatType(vuln.type),
+        shortDescription: { text: vuln.title || formatType(vuln.type) },
+        fullDescription: { text: vuln.description || "" },
+        defaultConfiguration: { level: sarifLevel(vuln.severity) },
+        help: { text: vuln.remediation || "" }
+      };
+    }
+    sarifResults.push({
+      ruleId: vuln.type,
+      level: sarifLevel(vuln.severity),
+      message: { text: vuln.description || "" },
+      properties: { confidence: vuln.confidence, category: vuln.category, evidence: vuln.evidence },
+      locations: [{ physicalLocation: { artifactLocation: { uri: currentResults.url || "" } } }]
+    });
+  });
+  var sarif = {
+    "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+    version: "2.1.0",
+    runs: [{
+      tool: {
+        driver: {
+          name: "Vibe Vulnerability Scanner",
+          version: "1.3.0",
+          informationUri: "https://github.com/ramukallepalli/vibe-vuln-scanner",
+          rules: Object.values(rulesMap)
+        }
+      },
+      results: sarifResults,
+      properties: {
+        scanUrl: currentResults.url,
+        scanTimestamp: new Date(currentResults.timestamp).toISOString()
+      }
+    }]
+  };
+  var jsonStr = JSON.stringify(sarif, null, 2);
+  var blob = new Blob([jsonStr], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+  var domain = extractDomainForFilename(currentResults.url);
+  var timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  chrome.downloads.download({ url: url, filename: "vuln-scan-" + domain + "-" + timestamp + ".sarif", saveAs: true }, function() {
     URL.revokeObjectURL(url);
   });
 }
