@@ -1,5 +1,3 @@
-/* global chrome */
-
 const MASKED_PREFIX = '****';
 
 function maskKey(value) {

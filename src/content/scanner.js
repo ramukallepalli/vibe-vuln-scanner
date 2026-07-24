@@ -882,9 +882,9 @@ class VulnerabilityScanner {
         minLength: 100
       },
       { regex: /sk-ant-[a-zA-Z0-9_-]{40,}/g, name: "Anthropic API Key", minLength: 50 },
-      { regex: /AIza[0-9A-Za-z_\-]{35}/g, name: "Google API Key", minLength: 39 },
+      { regex: /AIza[0-9A-Za-z_-]{35}/g, name: "Google API Key", minLength: 39 },
       { regex: /-----BEGIN [A-Z ]* PRIVATE KEY-----/g, name: "Private Key", minLength: 30 },
-      { regex: /AccountKey=[a-zA-Z0-9+\/]{40,}={0,2}/g, name: "Azure Storage Key", minLength: 44 }
+      { regex: /AccountKey=[a-zA-Z0-9+/]{40,}={0,2}/g, name: "Azure Storage Key", minLength: 44 }
     ];
 
     // Scan visible text

@@ -190,11 +190,11 @@ var TOP_NPM_PACKAGES = ["lodash","react","vue","angular","jquery","axios","momen
 
 function levenshtein(a, b) {
   var dp = [];
-  for (var i = 0; i <= a.length; i++) { dp[i] = [i]; }
-  for (var j = 0; j <= b.length; j++) { dp[0][j] = j; }
-  for (var i = 1; i <= a.length; i++) {
-    for (var j = 1; j <= b.length; j++) {
-      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  for (let i = 0; i <= a.length; i++) { dp[i] = [i]; }
+  for (let j = 0; j <= b.length; j++) { dp[0][j] = j; }
+  for (let r = 1; r <= a.length; r++) {
+    for (let c = 1; c <= b.length; c++) {
+      dp[r][c] = a[r-1]===b[c-1] ? dp[r-1][c-1] : 1 + Math.min(dp[r-1][c], dp[r][c-1], dp[r-1][c-1]);
     }
   }
   return dp[a.length][b.length];
@@ -253,7 +253,7 @@ async function analyzeSourceMap(mapUrl) {
           var key = name + "@" + ver;
           if (!seen.has(key)) { seen.add(key); dependencies.push({ name: name, version: ver }); }
         });
-      } catch(e) {}
+      } catch(e) { /* ignore malformed sourcesContent */ }
     });
     // Extract package names from source paths
     (mapData.sources || []).forEach(function(src) {
@@ -332,13 +332,13 @@ async function handleMessage(message, sender, sendResponse) {
       }
 
       case "getOSVVulnerabilities": {
-        var results = await queryOSVDev(message.packageName, message.version);
-        sendResponse({ results: results });
+        var osvResults = await queryOSVDev(message.packageName, message.version);
+        sendResponse({ results: osvResults });
         break;
       }
       case "getGitHubAdvisories": {
-        var results = await queryGitHubAdvisories(message.packageName, message.version);
-        sendResponse({ results: results });
+        var ghResults = await queryGitHubAdvisories(message.packageName, message.version);
+        sendResponse({ results: ghResults });
         break;
       }
       case "getSettings": {
@@ -353,8 +353,8 @@ async function handleMessage(message, sender, sendResponse) {
         break;
       }
       case "analyzeLLM": {
-        var r = await analyzeWithLLM(message.analysisType, message.context, message.finding);
-        sendResponse(r);
+        var llmResult = await analyzeWithLLM(message.analysisType, message.context, message.finding);
+        sendResponse(llmResult);
         break;
       }
       case "checkTyposquatting": {
@@ -362,8 +362,8 @@ async function handleMessage(message, sender, sendResponse) {
         break;
       }
       case "analyzeSourceMap": {
-        var r = await analyzeSourceMap(message.mapUrl);
-        sendResponse(r);
+        var smResult2 = await analyzeSourceMap(message.mapUrl);
+        sendResponse(smResult2);
         break;
       }
       case "getCookies": {
