@@ -247,7 +247,8 @@ class VulnerabilityScanner {
       }
 
       // Missing SRI (informational, not a vuln by itself)
-      if (src && src.includes('cdn') && !script.integrity) {
+      const CDN_PATTERNS = ['cdn.', 'unpkg.com', 'cdnjs.', 'jsdelivr.net', 'skypack.dev'];
+      if (src && CDN_PATTERNS.some(p => src.includes(p)) && !script.integrity) {
         findings.push(this.createFinding({
           type: 'MISSING_SRI',
           severity: 'LOW',
