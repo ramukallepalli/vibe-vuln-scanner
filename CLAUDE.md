@@ -1,22 +1,19 @@
 # Vibe Vulnerability Scanner
-
-Chrome Extension MV3, no build step — plain JS loaded directly.
+Chrome Extension MV3, plain JS, no build step.
 
 ## Files
-- `src/content/scanner.js` — `VulnerabilityScanner` class (content script)
-- `src/background/service-worker.js` — message router, all external API calls
+- `src/content/scanner.js` — `VulnerabilityScanner` class
+- `src/background/service-worker.js` — message router + all API calls
 - `src/popup/popup.js` — results UI, JSON/CSV/SARIF export
-- `src/options/options.js` — settings UI, all API keys optional
-- `__tests__/setup.js` — Chrome API mocks for Jest
+- `src/options/options.js` — settings UI (all keys optional)
 
-## ESLint traps
-- Nested `var` loops → `no-redeclare`; use `let`/`const` for loop variables
-- `/* global chrome */` is redundant — `webextensions: true` already defines it
-- Regex character classes: `\-` → `-`, `\/` → `/` (no useless escapes)
+## ESLint traps (not in code — bite every session)
+- Nested `var` loops → `no-redeclare`; use `let`/`const`
+- `/* global chrome */` redundant — `webextensions:true` covers it
+- Regex char classes: `\-`→`-`, `\/`→`/`
 
 ## Remotes
-- `personal` → github.com/ramukallepalli/vibe-vuln-scanner (PAT needs `repo`+`workflow`)
-- `origin` → github.corp.ebay.com (eBay internal)
+- `personal` → github.com/ramukallepalli/vibe-vuln-scanner (`repo`+`workflow` PAT)
+- `origin` → github.corp.ebay.com
 
-## Skill
-Run `/update` for full reference: message actions, scanner methods, APIs, settings keys, test approach.
+Run `/update` before making changes.
